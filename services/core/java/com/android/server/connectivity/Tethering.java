@@ -154,6 +154,7 @@ public class Tethering extends BaseNetworkObserver {
     private int mLastNotificationId;
 
     private boolean mRndisEnabled;       // track the RNDIS function enabled state
+    private boolean mNcmEnabled;       // track the NCM function enabled state
     private boolean mUsbTetherRequested; // true if USB tethering should be started
                                          // when RNDIS is enabled
 
@@ -761,8 +762,9 @@ public class Tethering extends BaseNetworkObserver {
                 synchronized (Tethering.this.mPublicSync) {
                     boolean usbConnected = intent.getBooleanExtra(UsbManager.USB_CONNECTED, false);
                     mRndisEnabled = intent.getBooleanExtra(UsbManager.USB_FUNCTION_RNDIS, false);
+                    mNcmEnabled = intent.getBooleanExtra(UsbManager.USB_FUNCTION_NCM, false);
                     // start tethering if we have a request pending
-                    if (usbConnected && mRndisEnabled && mUsbTetherRequested) {
+                    if (usbConnected && (mNcmEnabled || mRndisEnabled) && mUsbTetherRequested) {
                         tetherUsb(true);
                     }
                     mUsbTetherRequested = false;
@@ -862,20 +864,21 @@ public class Tethering extends BaseNetworkObserver {
     }
 
     public int setUsbTethering(boolean enable) {
-        if (VDBG) Log.d(TAG, "setUsbTethering(" + enable + ")");
+        if (VDBG) Log.d(TAG, "setUsbTethering(" + enable + ", " + funtcion + ")");
         UsbManager usbManager = (UsbManager)mContext.getSystemService(Context.USB_SERVICE);
 
         synchronized (mPublicSync) {
             if (enable) {
-                if (mRndisEnabled) {
+                if (mRndisEnabled || mNcmEnabled) {
                     tetherUsb(true);
                 } else {
                     mUsbTetherRequested = true;
-                    usbManager.setCurrentFunction(UsbManager.USB_FUNCTION_RNDIS);
+                    //usbManager.setCurrentFunction(UsbManager.USB_FUNCTION_RNDIS);
+                    usbManager.setCurrentFunction(UsbManager.USB_FUNCTION_NCM);
                 }
             } else {
                 tetherUsb(false);
-                if (mRndisEnabled) {
+                if (mRndisEnabled || mNcmEnabled) {
                     usbManager.setCurrentFunction(null);
                 }
                 mUsbTetherRequested = false;
